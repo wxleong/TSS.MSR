@@ -60,31 +60,39 @@ public class DrsServer {
         tpm.FlushContext(ekPubHandle);
         tpm.FlushContext(idKey.handle);
         tpm.FlushContext(sess);
-        
-        
-        final TPMT_PUBLIC symWrapperTemplate = new TPMT_PUBLIC(
-                TPM_ALG_ID.SHA256,
-                new TPMA_OBJECT(TPMA_OBJECT.decrypt, TPMA_OBJECT.encrypt, TPMA_OBJECT.userWithAuth),
-                new byte[0],
-                new TPMS_SYMCIPHER_PARMS(symWrapperDef),
-                new TPM2B_DIGEST());
 
-        //
-        // Encrypt URI data to be passed to the client device
-        //
-        TPMS_SENSITIVE_CREATE sens = new TPMS_SENSITIVE_CREATE(new byte[0], dupResp.encryptionKeyOut);
-        TPM_HANDLE symWrapperHandle = tpm.CreatePrimary(TPM_HANDLE.from(TPM_RH.OWNER), sens, symWrapperTemplate,
-                                                          new byte[0], new TPMS_PCR_SELECTION[0])
-                                    .handle;
-        
-        byte[] uriData =  "http://my.test.url/TestDeviceID=F4ED90771DAA7C0B3230FF675DF8A61104AE7C8BB0093FD6A".getBytes();    // Charset.forName("UTF-8")
-        byte[] iv = new byte[dupResp.encryptionKeyOut.length];
-        byte[] encryptedUri = tpm.EncryptDecrypt(symWrapperHandle, (byte)0, TPM_ALG_ID.CFB, iv, uriData).outData;
-        
-    
-        // Delete the key and session handles
-        tpm.FlushContext(symWrapperHandle);
+        /**
+         * Not all TPMs support AES usage. Use software AES.
+         */
+        byte[] encryptedUri;
+        if (false) {
+            final TPMT_PUBLIC symWrapperTemplate = new TPMT_PUBLIC(
+                    TPM_ALG_ID.SHA256,
+                    new TPMA_OBJECT(TPMA_OBJECT.decrypt, TPMA_OBJECT.encrypt, TPMA_OBJECT.userWithAuth),
+                    new byte[0],
+                    new TPMS_SYMCIPHER_PARMS(symWrapperDef),
+                    new TPM2B_DIGEST());
 
+            //
+            // Encrypt URI data to be passed to the client device
+            //
+            TPMS_SENSITIVE_CREATE sens = new TPMS_SENSITIVE_CREATE(new byte[0], dupResp.encryptionKeyOut);
+            TPM_HANDLE symWrapperHandle = tpm.CreatePrimary(TPM_HANDLE.from(TPM_RH.OWNER), sens, symWrapperTemplate,
+                    new byte[0], new TPMS_PCR_SELECTION[0])
+                    .handle;
+
+            byte[] uriData = "http://my.test.url/TestDeviceID=F4ED90771DAA7C0B3230FF675DF8A61104AE7C8BB0093FD6A".getBytes();    // Charset.forName("UTF-8")
+            byte[] iv = new byte[dupResp.encryptionKeyOut.length];
+            encryptedUri = tpm.EncryptDecrypt(symWrapperHandle, (byte) 0, TPM_ALG_ID.CFB, iv, uriData).outData;
+
+
+            // Delete the key and session handles
+            tpm.FlushContext(symWrapperHandle);
+        } else {
+            byte[] uriData = "http://my.test.url/TestDeviceID=F4ED90771DAA7C0B3230FF675DF8A61104AE7C8BB0093FD6A".getBytes();    // Charset.forName("UTF-8")
+            byte[] iv = new byte[dupResp.encryptionKeyOut.length];
+            encryptedUri = Crypto.cfbEncrypt(true, TPM_ALG_ID.AES, dupResp.encryptionKeyOut, iv, uriData);
+        }
 
         //
         // Build activation blob for the client device

@@ -234,35 +234,45 @@ public class DrsClient
             int maxUriDataSize = TpmHelpers.getTpmProperty(tpm, TPM_PT.INPUT_BUFFER);
             if (encUriData.buffer.length > maxUriDataSize)
                 throw new Exception("Too long encrypted URI data string. Max supported length is " + Integer.toString(maxUriDataSize));
-        
-            
-            // The template of the symmetric key used by the DRS
-            TPMT_PUBLIC symTemplate = new TPMT_PUBLIC(
-                    // TPMI_ALG_HASH    nameAlg
-                    TPM_ALG_ID.SHA256,
-                    // TPMA_OBJECT  objectAttributes
-                    new TPMA_OBJECT(TPMA_OBJECT.decrypt, TPMA_OBJECT.fixedTPM, TPMA_OBJECT.fixedParent, TPMA_OBJECT.userWithAuth),
-                    // TPM2B_DIGEST authPolicy
-                    new byte[0],
-                    // TPMU_PUBLIC_PARMS    parameters
-                    new TPMS_SYMCIPHER_PARMS(symDef),
-                    // TPMU_PUBLIC_ID       unique
-                    new TPM2B_DIGEST());
 
-            // URI data are encrypted with the same symmetric key used as the inner protector of the new Device ID key duplication blob.
-            TPMS_SENSITIVE_CREATE sensCreate = new TPMS_SENSITIVE_CREATE (new byte[0], innerWrapKey);
-            CreateResponse crResp = tpm.Create(SRK_PersHandle, sensCreate, symTemplate, new byte[0], new TPMS_PCR_SELECTION[0]);
-            
-            TPM_HANDLE hSymKey = tpm.Load(SRK_PersHandle, crResp.outPrivate, crResp.outPublic);
-            
-            byte[] iv = new byte[innerWrapKey.length];
-            EncryptDecryptResponse edResp = tpm.EncryptDecrypt(hSymKey, (byte)1, TPM_ALG_ID.CFB, iv, encUriData.buffer);
+            /**
+             * Not all TPMs support AES usage. Use software AES.
+             */
+            EncryptDecryptResponse edResp = null;
+            if (false) {
+                // The template of the symmetric key used by the DRS
+                TPMT_PUBLIC symTemplate = new TPMT_PUBLIC(
+                        // TPMI_ALG_HASH    nameAlg
+                        TPM_ALG_ID.SHA256,
+                        // TPMA_OBJECT  objectAttributes
+                        new TPMA_OBJECT(TPMA_OBJECT.decrypt, TPMA_OBJECT.fixedTPM, TPMA_OBJECT.fixedParent, TPMA_OBJECT.userWithAuth),
+                        // TPM2B_DIGEST authPolicy
+                        new byte[0],
+                        // TPMU_PUBLIC_PARMS    parameters
+                        new TPMS_SYMCIPHER_PARMS(symDef),
+                        // TPMU_PUBLIC_ID       unique
+                        new TPM2B_DIGEST());
+
+                // URI data are encrypted with the same symmetric key used as the inner protector of the new Device ID key duplication blob.
+                TPMS_SENSITIVE_CREATE sensCreate = new TPMS_SENSITIVE_CREATE(new byte[0], innerWrapKey);
+                CreateResponse crResp = tpm.Create(SRK_PersHandle, sensCreate, symTemplate, new byte[0], new TPMS_PCR_SELECTION[0]);
+
+                TPM_HANDLE hSymKey = tpm.Load(SRK_PersHandle, crResp.outPrivate, crResp.outPublic);
+
+                byte[] iv = new byte[innerWrapKey.length];
+                edResp = tpm.EncryptDecrypt(hSymKey, (byte) 1, TPM_ALG_ID.CFB, iv, encUriData.buffer);
+
+                tpm.FlushContext(hSymKey);
+            } else {
+                byte[] iv = new byte[innerWrapKey.length];
+                edResp = new EncryptDecryptResponse();
+                edResp.outData = Crypto.cfbEncrypt(false, TPM_ALG_ID.AES, innerWrapKey, iv, encUriData.buffer);
+            }
+
             Print("Decrypted URI data size: %d", edResp.outData.length);
             Print("Decrypted URI [for native]: %s", new String(edResp.outData, Charset.forName("UTF-8")));
             Print("Decrypted URI [for java]: %s", new String(edResp.outData));
-            
-            tpm.FlushContext(hSymKey);
-            
+
             //
             // Generate token data, and sign it using the new Device ID key
             // (Note that this sample simply generates a random buffer in lieu of a valid token)
