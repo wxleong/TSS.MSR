@@ -1,3 +1,5 @@
+package test;
+
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 
@@ -7,7 +9,10 @@ public class TSSMainTests {
         try {
             System.out.println("main");
             String[] args = {"tbs"};
-            TSSMain.main(args);
+
+            SamplesTests s = new SamplesTests();
+            s.doAll(args);
+
         } catch (Exception e) {
             Assertions.assertTrue(false);
         }

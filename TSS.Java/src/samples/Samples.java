@@ -7,8 +7,8 @@ import tss.tpm.*;
 
 public class Samples 
 {
-    boolean usesTbs;
-    Tpm tpm;
+    public boolean usesTbs;
+    public Tpm tpm;
     public static byte[] nullVec = new byte[0];
 
     public Samples() 
@@ -22,7 +22,7 @@ public class Samples
         tpm = usesTbs ? TpmFactory.platformTpm() : TpmFactory.localTpmSimulator();
     }
 
-    private void cleanSlots(TPM_HT slotType)
+    public void cleanSlots(TPM_HT slotType)
     {
         GetCapabilityResponse caps = tpm.GetCapability(TPM_CAP.HANDLES, slotType.toInt() << 24, 8);
         TPML_HANDLE handles = (TPML_HANDLE)caps.capabilityData;
@@ -76,7 +76,7 @@ public class Samples
         }
     }
 
-    void random() 
+    public void random()
     {
         // get random bytes from the TPM
         byte[] r = tpm.GetRandom(20);
@@ -88,7 +88,7 @@ public class Samples
         System.out.println("GetRandom (2): " + Helpers.toHex(r));
     }
 
-    void pcr1()
+    public void pcr1()
     {
         PCR_ReadResponse pcrAtStart = tpm.PCR_Read(TPMS_PCR_SELECTION.CreateSelectionArray(TPM_ALG_ID.SHA1, 0));
         System.out.println("PCR 0 (SHA1) at start: \n" + pcrAtStart.toString());
@@ -120,7 +120,7 @@ public class Samples
         return;
     }
 
-    void primaryKeys() 
+    public void primaryKeys()
     {
         // Create an RSA signing public key in the owner hierarchy
         TPMT_PUBLIC rsaTemplate = new TPMT_PUBLIC(TPM_ALG_ID.SHA256,
@@ -222,7 +222,7 @@ public class Samples
 
     }
 
-    void childKeys() {
+    public void childKeys() {
         // Create an RSA storage key in the owner hierarchy. This is
         // conventionally called an SRK
         TPMT_PUBLIC srkTemplate = new TPMT_PUBLIC(TPM_ALG_ID.SHA256,
@@ -279,7 +279,7 @@ public class Samples
         tpm.FlushContext(pubChildHandle);
     }
 
-    void getCapability()
+    public void getCapability()
     {
         // For the first two examples we show how to get a batch of properties
         // at a time.
@@ -356,7 +356,7 @@ public class Samples
         }
     }
 
-    void hash()
+    public void hash()
     {
         TPM_ALG_ID hashAlgs[] = new TPM_ALG_ID[] { TPM_ALG_ID.SHA1, TPM_ALG_ID.SHA256, TPM_ALG_ID.SHA384 };
 
@@ -401,7 +401,7 @@ public class Samples
         }
     } // hash()
 
-    void hmac() {
+    public void hmac() {
         // TPM HMAC needs a key loaded into the TPM.
         // Key and data to be HMACd
         byte[] key = new byte[] { 5, 4, 3, 2, 1, 0 };
@@ -461,7 +461,7 @@ public class Samples
         return;
     }
 
-    void encryptDecrypt() {
+    public void encryptDecrypt() {
         // To encrypt and decrypt using a symmetric key we need a TPM-resident
         // key. Easiest
         // is to import it as a primary key
@@ -500,7 +500,7 @@ public class Samples
         return;
     }
 
-    void ek() {
+    public void ek() {
         // This policy is a "standard" policy that is used with vendor-provided
         // EKs
         byte[] standardEKPolicy = new byte[] { (byte) 0x83, 0x71, (byte) 0x97, 0x67, 0x44, (byte) 0x84, (byte) 0xb3,
@@ -539,7 +539,7 @@ public class Samples
         return;
     }
 
-    void ek2() {
+    public void ek2() {
         // THis sample demonstrates the use of "standard" EKs - that need a
         // policy. the EK() sample demonstrates the
         // use of EKs that have userWithAuth
@@ -609,7 +609,7 @@ public class Samples
         return;
     }
 
-    void quote() {
+    public void quote() {
         // Create an RSA restricted signing key in the owner hierarchy
         TPMT_PUBLIC rsaTemplate = new TPMT_PUBLIC(TPM_ALG_ID.SHA256,
                 new TPMA_OBJECT(TPMA_OBJECT.sign, TPMA_OBJECT.sensitiveDataOrigin, TPMA_OBJECT.userWithAuth,
@@ -653,7 +653,7 @@ public class Samples
         tpm.FlushContext(quotingKey.handle);
     }
 
-    void nv() {
+    public void nv() {
         // Several types of NV-slot use are demonstrated here: simple, counter,
         // bitfield, and extendable
 
@@ -894,7 +894,7 @@ public class Samples
      * Demonstrates how tss.Java can be used to create software keys (not using the TPM), that can then 
      * be imported into the TPM.
      */
-    void softwareKeys()
+    public void softwareKeys()
     {
         // Make an RSA primary storage key that can be the target of duplication
         // operations
@@ -986,7 +986,7 @@ public class Samples
      * Demonstrates how tss.Java can be used to create ECC software keys (not using the TPM), that can then 
      * be imported into the TPM.  
      */
-    void softwareECCKeys()
+    public void softwareECCKeys()
     {
         // Make an RSA primary storage key that can be the target of duplication
         // operations
@@ -1062,7 +1062,7 @@ public class Samples
      * Helper-function to see if the samples are cleaning up properly
      * @return Are slots empty?
      */
-    boolean allSlotsEmpty()
+    public boolean allSlotsEmpty()
     {
         boolean slotFull = false;
         GetCapabilityResponse resp = tpm.GetCapability(TPM_CAP.HANDLES, TPM_HT.TRANSIENT.toInt() << 24, 32);
@@ -1121,8 +1121,8 @@ public class Samples
                 new TPMS_PCR_SELECTION[] {new TPMS_PCR_SELECTION(TPM_ALG_ID.SHA1, locTwoResettablePcr)});
         System.out.println("Resettable PCR after reset" + resettablePcrVal.toString());
     }
-    
-    void counterTimer()
+
+    public void counterTimer()
     {
         int runTime = 5000;  // milliseconds
         System.out.println("Reading TPM time for ~" + String.valueOf(runTime) + " seconds");
@@ -1147,8 +1147,8 @@ public class Samples
         }
         return;
     }
-    
-    void write(String s) {
+
+    public void write(String s) {
         System.out.println(s);
     }
 }
