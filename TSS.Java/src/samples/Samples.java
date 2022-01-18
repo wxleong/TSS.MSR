@@ -358,7 +358,7 @@ public class Samples
 
     public void hash()
     {
-        TPM_ALG_ID hashAlgs[] = new TPM_ALG_ID[] { TPM_ALG_ID.SHA1, TPM_ALG_ID.SHA256, TPM_ALG_ID.SHA384 };
+        TPM_ALG_ID hashAlgs[] = new TPM_ALG_ID[] { TPM_ALG_ID.SHA1, TPM_ALG_ID.SHA256 };
 
         // first demonstrate non-sequence hashing (for short sequences)
         byte[] toHash = Helpers.RandomBytes(16);
