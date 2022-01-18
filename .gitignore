@@ -199,6 +199,7 @@ FakesAssemblies/
 /TSS.Java/target
 /TSS.Java/.settings
 /TSS.Java/.vscode
+/TSS.Java/.idea
 /TSS.JS/lib
 /TSS.NET/Samples/NV (UWP)/NV (UWP).nuget.targets
 /TSS.NET/Samples/NV (UWP)/NV (UWP).nuget.props
