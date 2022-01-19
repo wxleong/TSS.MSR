@@ -951,8 +951,8 @@ public class Samples
         // and once imported, we can "load" it
         TPM_HANDLE loadedKey = tpm.Load(rsaSrk.handle, newPrivate, swKey.PublicPart);
         // and sign with it
-        loadedSigningKey.AuthValue = swKeyAuthValue;
-        signature = tpm.Sign(loadedSigningKey,
+        loadedKey.AuthValue = swKeyAuthValue;
+        signature = tpm.Sign(loadedKey,
                 TPMT_HA.fromHashOf(TPM_ALG_ID.SHA256, "abc").digest, new TPMS_NULL_SIG_SCHEME(),
                 new TPMT_TK_HASHCHECK());
         System.out.println("Signature of Import key:\n" + signature.toString());
@@ -971,8 +971,8 @@ public class Samples
         // and once imported, we can "load" it
         TPM_HANDLE loadedKey2 = tpm.Load(rsaSrk.handle, newPrivate2, swKey.PublicPart);
         // and sign with it
-        loadedSigningKey.AuthValue = swKeyAuthValue;
-        signature = tpm.Sign(loadedSigningKey,
+        loadedKey2.AuthValue = swKeyAuthValue;
+        signature = tpm.Sign(loadedKey2,
                 TPMT_HA.fromHashOf(TPM_ALG_ID.SHA256, "abc").digest, new TPMS_NULL_SIG_SCHEME(),
                 new TPMT_TK_HASHCHECK());
         System.out.println("Signature of Import key (2):\n" + signature.toString());

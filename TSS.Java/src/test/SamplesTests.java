@@ -46,7 +46,7 @@ public class SamplesTests extends Samples
         quote();
         nv();
         //duplication();
-        //nok softwareKeys();
+        softwareKeys();
         softwareECCKeys();
         if (!usesTbs)
             locality();
