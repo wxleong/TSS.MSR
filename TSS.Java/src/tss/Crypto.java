@@ -432,7 +432,41 @@ public class Crypto {
         return encData;
     }
 
+    /**
+     * Clone of tss.Crypto.createRsaKey() with following modification
+     *
+     * Key created by default crypto provider "SunRsaSign" has low RSA key quality.
+     * TPM2_import will reject such key with error code TPM_RC_BINDING.
+     * Switching to BouncyCastleProvider.
+     *
+     * @param keySize
+     * @param exponent
+     * @return
+     */
     public static RsaKeyPair createRsaKey(int keySize, int exponent)
+    {
+        try
+        {
+            // Default provider is "SunRsaSign", switch to BouncyCastle
+            Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA", "BC");
+            keyGen.initialize(keySize);
+            KeyPair key = keyGen.generateKeyPair();
+
+            RSAPrivateCrtKey priv = (RSAPrivateCrtKey) key.getPrivate();
+            RSAPublicKey pub = (RSAPublicKey) key.getPublic();
+            Crypto.RsaKeyPair newKey = new Crypto.RsaKeyPair();
+            newKey.PublicKey = pub.getModulus();
+            newKey.PrivateKey = priv.getPrimeP();
+            return newKey;
+        }
+        catch(Exception e)
+        {
+            throw new TpmException("Bad alg:", e);
+        }
+    }
+
+    /*public static RsaKeyPair createRsaKey(int keySize, int exponent)
     {
         try
         {
@@ -451,7 +485,7 @@ public class Crypto {
         {
             throw new TpmException("Bad alg:", e);
         }
-    }
+    }*/
     public static ECCKeyPair createECCKey(TPM_ECC_CURVE curveId, TPM_ALG_ID alg)
     {
         try
