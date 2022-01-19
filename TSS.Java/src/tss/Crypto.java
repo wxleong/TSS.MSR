@@ -34,7 +34,7 @@ import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
 import org.bouncycastle.crypto.params.ParametersWithRandom;
 import org.bouncycastle.crypto.params.RSAKeyParameters;
-//import org.bouncycastle.crypto.signers.PSSSigner;
+import org.bouncycastle.crypto.signers.PSSSigner;
 import org.bouncycastle.crypto.signers.RSADigestSigner;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
@@ -133,24 +133,14 @@ public class Crypto {
 
             if (rsaParms.scheme instanceof TPMS_SIG_SCHEME_RSAPSS) {
                 TPMS_SIGNATURE_RSAPSS theRsaSig = (TPMS_SIGNATURE_RSAPSS) _signature;
-                //TPMS_SIG_SCHEME_RSAPSS scheme = (TPMS_SIG_SCHEME_RSAPSS) rsaParms.scheme;
-
-                // todo - not working
-                // bugbug - salt size
-                AsymmetricBlockCipher rsaEngine = new RSABlindedEngine();
-                rsaEngine.init(false, pubKey);
-/*
-                PSSSigner signerX = new PSSSigner(rsaEngine, getDigest(hashAlg), 48);
-
-                signerX.init(false, pubKey);
-                signerX.update(_dataThatWasSigned, 0, _dataThatWasSigned.length);
-                boolean sigOkX = signerX.verifySignature(theRsaSig.sig);
-*/
-                RSADigestSigner signer = new RSADigestSigner(getDigest(theRsaSig.hash));
+                // check TCG spec Part 4: Supporting Routines
+                // not conforming to FIPS 186-4, check TCG spec Part 1: Architecture -> RSASSA_PSS footnote
+                int maxSaltSize = (theRsaSig.sig.length - getDigest(getSigningHashAlg(_pubKey)).getDigestSize() - 1) - 1;
+                int saltSize = maxSaltSize;
+                PSSSigner signer = new PSSSigner(new RSAEngine(), getDigest(getSigningHashAlg(_pubKey)), saltSize);
                 signer.init(false, pubKey);
                 signer.update(_dataThatWasSigned, 0, _dataThatWasSigned.length);
-                boolean sigOk = signer.verifySignature(theRsaSig.sig);
-
+                Boolean sigOk = signer.verifySignature(theRsaSig.sig);
                 return sigOk;
             }
             if (rsaParms.scheme instanceof TPMS_SIG_SCHEME_RSASSA) {

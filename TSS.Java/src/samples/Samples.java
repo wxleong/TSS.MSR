@@ -172,7 +172,6 @@ public class Samples
 
         // check the signature against the public key that the TPM returned
         rsaSigOk = rsaPrimary.outPublic.validateSignature(dataToSign, rsaSigPss);
-        rsaSigOk = true; // bugbug
         System.out.println("RSA Primary Key signature (PSS): \n" + String.valueOf(rsaSigOk));
         if (!rsaSigOk)
             throw new RuntimeException("Error: Signature did not validate");
