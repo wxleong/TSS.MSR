@@ -16,7 +16,8 @@ import java.security.spec.InvalidKeySpecException;
 
 //import org.bouncycastle.asn1.eac.ECDSAPublicKey;
 //import org.bouncycastle.asn1.x9.ECNamedCurveTable;
-//import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.asn1.nist.NISTNamedCurves;
+import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.AsymmetricBlockCipher;
 import org.bouncycastle.crypto.Digest;
 import org.bouncycastle.crypto.digests.SHA1Digest;
@@ -30,10 +31,8 @@ import org.bouncycastle.crypto.engines.RSABlindedEngine;
 import org.bouncycastle.crypto.engines.RSAEngine;
 import org.bouncycastle.crypto.macs.HMac;
 import org.bouncycastle.crypto.modes.CFBBlockCipher;
-import org.bouncycastle.crypto.params.KeyParameter;
-import org.bouncycastle.crypto.params.ParametersWithIV;
-import org.bouncycastle.crypto.params.ParametersWithRandom;
-import org.bouncycastle.crypto.params.RSAKeyParameters;
+import org.bouncycastle.crypto.params.*;
+import org.bouncycastle.crypto.signers.ECDSASigner;
 import org.bouncycastle.crypto.signers.PSSSigner;
 import org.bouncycastle.crypto.signers.RSADigestSigner;
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
@@ -44,6 +43,7 @@ import org.bouncycastle.jce.interfaces.ECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 //import org.bouncycastle.math.ec.ECCurve;
 
+import org.bouncycastle.math.ec.ECPoint;
 import tss.tpm.*;
 
 /**
@@ -158,63 +158,28 @@ public class Crypto {
         }
         if (_pubKey.parameters instanceof TPMS_ECC_PARMS) 
         {
-            // todo: not yet working...
             TPMS_ECC_PARMS eccParms = (TPMS_ECC_PARMS) _pubKey.parameters;
-            //TPMS_ECC_POINT eccPubKey = (TPMS_ECC_POINT) (_pubKey.unique);
+            TPMS_ECC_POINT eccPubKey = (TPMS_ECC_POINT) (_pubKey.unique);
             if (eccParms.scheme instanceof TPMS_SIG_SCHEME_ECDSA) 
             {
-                /*
-                TPMS_SIG_SCHEME_ECDSA scheme = (TPMS_SIG_SCHEME_ECDSA) eccParms.scheme;
+                TPMS_SIG_SCHEME_ECDSA scheme = (TPMS_SIG_SCHEME_ECDSA)eccParms.scheme;
+                TPM_ALG_ID hashAlg = scheme.hashAlg;
+                TPMS_SIGNATURE_ECDSA theEccSig = ((TPMS_SIGNATURE_ECDSA)_signature);
 
-                ECDSAPublicKey pubKey = new ECDSAPublicKey(null, null, null, null, _dataThatWasSigned, null, _dataThatWasSigned, 0);
-                
-                        String name = "secp256r1";
+                X9ECParameters ecParams = NISTNamedCurves.getByName("P-256");
+                ECPoint pubPoint = ecParams.getCurve().createPoint(new BigInteger(1, eccPubKey.x), new BigInteger(1, eccPubKey.y));
+                ECDomainParameters parameters = new ECDomainParameters(ecParams.getCurve(), ecParams.getG(), ecParams.getN(), ecParams.getH());
 
-                
-                   // === NOT PART OF THE CODE, JUST GETTING TEST VECTOR ===
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "BC");
-                ECGenParameterSpec ecGenParameterSpec = new ECGenParameterSpec(name);
-                kpg.initialize(ecGenParameterSpec);
-                ECPublicKey key = (ECPublicKey) kpg.generateKeyPair().getPublic();
-                byte[] x = key.getW().getAffineX().toByteArray();
-                byte[] y = key.getW().getAffineY().toByteArray();
+                ECDSASigner signer = new ECDSASigner();
+                signer.init(false, new ECPublicKeyParameters(pubPoint, parameters));
 
-                // === here the magic happens ===
-                KeyFactory eckf = KeyFactory.getInstance("EC");
-                ECPoint point = new ECPoint(new BigInteger(1, x), new BigInteger(1, y));
-                ECNamedCurveParameterSpec parameterSpec = ECNamedCurveTable.getParameterSpec(name);
-                ECParameterSpec spec = new ECNamedCurveSpec(name, parameterSpec.getCurve(), parameterSpec.getG(), parameterSpec.getN(), parameterSpec.getH(), parameterSpec.getSeed());
-                ECPublicKey ecPublicKey = (ECPublicKey) eckf.generatePublic(new ECPublicKeySpec(point, spec));
-                
-                
-                
-                AsymmetricKeyParameter pubKey = new EC
-                AsymmetricCipherKeyPair kp = new AsymmetricCipherKeyPair(null, null)
-                
-                ECDSASigner verifier = new ECDSASigner();
-                verifier.init(false, param);
-                
-                ParametersWithRandom param = new ParametersWithRandom(priKey, k);
-
-                CipherParameters parms = new CipherParameters()
-                verifier.init(false, param);
-                ISigner signer = SignerUtilities.GetSigner("SHA-256withECDSA"); 
-
-                ECDSADigestSigner 
-                
-            */    
-            return true;
+                Boolean sigOk = signer.verifySignature(Crypto.hash(hashAlg, _dataThatWasSigned), new BigInteger(1, theEccSig.signatureR), new BigInteger(1, theEccSig.signatureS));
+                return sigOk;
             }
-        
-
             throw new RuntimeException("Not implemented");
         }
-        
-        
-        
         throw new RuntimeException("Not implemented");
     };
-
 
     /**
      * Validate a TPM quote against a set of PCR and a nonce.

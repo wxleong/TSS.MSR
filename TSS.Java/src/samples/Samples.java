@@ -208,10 +208,7 @@ public class Samples
         System.out.println("ECC Primary Key signature: \n" + eccSig.toString());
 
         // check the signature against the public key that the TPM returned
-        // Boolean eccSigOk = eccPrimary.outPublic.validateSignature(dataToSign,
-        // eccSig);
-        // todo
-        Boolean eccSigOk = true;
+        Boolean eccSigOk = eccPrimary.outPublic.validateSignature(dataToSign, eccSig);
         System.out.println("ECC Primary Key signature is OK: \n" + eccSigOk.toString());
         if (!eccSigOk)
             throw new RuntimeException("Error: Signature did not validate");
