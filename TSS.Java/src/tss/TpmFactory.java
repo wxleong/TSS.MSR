@@ -43,7 +43,7 @@ public class TpmFactory
     public static Tpm remoteTpm(String hostName, int port)
     {        
         Tpm tpm = new Tpm();
-        TpmDevice device = new TpmDeviceTcp(hostName, port);
+        TpmDevice device = new TpmDeviceTunnelClient(hostName, port);
         device.connect();
         tpm._setDevice(device);
         return tpm;
