@@ -8,6 +8,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Async approach is useful for REST service implementation
+ * The strategy is TPM commands can be coded as usual and launch as a thread (TpmAsyncRunnable -> TpmCommandSet)
+ * The running thread will be put to sleep whenever there is a pending TPM request.
+ * The request can be retrieved from the thread, transfer to any TPM around the globe for processing.
+ * To wake up the thread, the response from a TPM has to be fed to the thread.
+ * This process continues until all TPM commands are executed or there is a timeout occurred
+ */
 public class TPMAsyncRunnableTests {
 
     /**
@@ -43,7 +51,7 @@ public class TPMAsyncRunnableTests {
             byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
 
-            /* Use Windows' TPM */
+            /* feed the request to Windows' TPM to obtain the response */
             TpmDeviceTbs tpmDeviceTbs = new TpmDeviceTbs();
             tpmDeviceTbs.connect();
             tpmDeviceTbs.dispatchCommand(txBuffer);
@@ -51,7 +59,7 @@ public class TPMAsyncRunnableTests {
             byte[] rxBuffer = tpmDeviceTbs.getResponse();
             System.out.println("GetRandom Rx command byte stream: " + Helpers.arrayToString(rxBuffer));
 
-            /* get TPM response */
+            /* process the response */
             tpmAsyncRunnable.rxReady(rxBuffer);
 
             // wait for child thread do not terminate prematurely
@@ -93,7 +101,7 @@ public class TPMAsyncRunnableTests {
             byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
 
-            /* Use Windows' TPM */
+            /* feed the request to Windows' TPM to obtain the response */
             TpmDeviceTbs tpmDeviceTbs = new TpmDeviceTbs();
             tpmDeviceTbs.connect();
             tpmDeviceTbs.dispatchCommand(txBuffer);
@@ -101,7 +109,7 @@ public class TPMAsyncRunnableTests {
             byte[] rxBuffer = tpmDeviceTbs.getResponse();
             System.out.println("GetRandom Rx command byte stream: " + Helpers.arrayToString(rxBuffer));
 
-            /* get TPM response */
+            /* process the response */
             tpmAsyncRunnable.rxReady(rxBuffer);
 
             // join the child thread so parent thread will not terminate prematurely
@@ -116,7 +124,7 @@ public class TPMAsyncRunnableTests {
     }
 
     /**
-     * Manually interrupt the running thread
+     * Manually interrupt a running thread
      *
      * Test should pass with Exception message:
      * java.lang.NullPointerException: Cannot read the array length because "array" is null
@@ -145,6 +153,7 @@ public class TPMAsyncRunnableTests {
             Thread tpmAsyncThread = new Thread(tpmAsyncRunnable);
             tpmAsyncThread.start();
 
+            /* get TPM request */
             while(!tpmAsyncRunnable.txReady());
             byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
@@ -193,6 +202,7 @@ public class TPMAsyncRunnableTests {
             Thread tpmAsyncThread = new Thread(tpmAsyncRunnable);
             tpmAsyncThread.start();
 
+            /* get TPM request */
             while(!tpmAsyncRunnable.txReady());
             byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));

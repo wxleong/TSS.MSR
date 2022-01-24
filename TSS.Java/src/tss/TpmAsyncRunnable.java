@@ -76,15 +76,25 @@ public class TpmAsyncRunnable implements Runnable {
         public void dispatchCommand(byte[] cmdBuf) {
             isCommandReady = true;
             isResponseReady = false;
-            txBuffer = cmdBuf.clone();
+
+            /**
+             * .clone() has an unknown bug where txBuffer intermittently becomes null...
+             * Avoid .clone() for now.
+             *
+             * To reproduce this issue, swap the following code with the commented code and
+             * run all the tests in TPMAsyncRunnableTests concurrently, notice some
+             * tests will fail.
+             */
+            //txBuffer = cmdBuf.clone();
+            txBuffer = new byte[cmdBuf.length];
+            System.arraycopy(cmdBuf, 0, txBuffer, 0, cmdBuf.length);
+
             rxBuffer = null;
             synchronized (this) {
                 try {
                     this.wait(timeout);
-                    //Thread.sleep(timeout);
                 } catch (InterruptedException e) {
                     /* use interrupt to wake up the thread */
-                    return;
                 }
             }
         }
@@ -105,7 +115,9 @@ public class TpmAsyncRunnable implements Runnable {
         }
 
         public void setRxBuffer(byte[] respBuf) {
-            rxBuffer = respBuf.clone();
+            //rxBuffer = respBuf.clone(); // bug, check above
+            rxBuffer = new byte[respBuf.length];
+            System.arraycopy(respBuf, 0, rxBuffer, 0, respBuf.length);
             isResponseReady = true;
             isCommandReady = false;
         }
