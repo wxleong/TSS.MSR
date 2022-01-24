@@ -40,10 +40,16 @@ public class TpmFactory
      * @param port Port number of the TPM command socket. Note that the protocol also uses port+1 to accept control signals.       
      * @return New Tpm instance with an connected TpmDeviceTcp
      */
-    public static Tpm remoteTpm(String hostName, int port)
+    public static Tpm remoteTpm(String hostName, int port, boolean isSecure)
     {        
         Tpm tpm = new Tpm();
-        TpmDevice device = new TpmDeviceTunnelClient(hostName, port);
+        TpmDevice device = null;
+
+        if (isSecure)
+            device = new TpmDeviceSSLTunnelClient(hostName, port);
+        else
+            device = new TpmDeviceTunnelClient(hostName, port);
+
         device.connect();
         tpm._setDevice(device);
         return tpm;
