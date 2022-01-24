@@ -1,8 +1,6 @@
 package tss;
 
-import java.util.concurrent.TimeoutException;
-
-public class TpmAsyncRunnable implements Runnable {
+public class TpmSyncRunnable implements Runnable {
 
     private static final int DEFAULT_TIMEOUT = 5000;
 
@@ -11,7 +9,7 @@ public class TpmAsyncRunnable implements Runnable {
     TpmCommandSet tpmCommandSet;
     int timeout; // milliseconds
 
-    public TpmAsyncRunnable(TpmCommandSet tpmCommandSet, int timeout) {
+    public TpmSyncRunnable(TpmCommandSet tpmCommandSet, int timeout) {
         tpm = new Tpm();
         tpmDeviceHook = new TpmDeviceHook();
         tpm._setDevice(tpmDeviceHook);
@@ -19,7 +17,7 @@ public class TpmAsyncRunnable implements Runnable {
         this.timeout = timeout;
     }
 
-    public TpmAsyncRunnable(TpmCommandSet tpmCommandSet) {
+    public TpmSyncRunnable(TpmCommandSet tpmCommandSet) {
         this(tpmCommandSet, DEFAULT_TIMEOUT);
     }
 
@@ -82,7 +80,7 @@ public class TpmAsyncRunnable implements Runnable {
              * Avoid .clone() for now.
              *
              * To reproduce this issue, swap the following code with the commented code and
-             * run all the tests in TPMAsyncRunnableTests concurrently, notice some
+             * run all the tests in TPMSyncRunnableTests concurrently, notice some
              * tests will fail.
              */
             //txBuffer = cmdBuf.clone();

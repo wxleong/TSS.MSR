@@ -9,14 +9,14 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Async approach is useful for REST service implementation
- * The strategy is TPM commands can be coded as usual and launch as a thread (TpmAsyncRunnable -> TpmCommandSet)
- * The running thread will be put to sleep whenever there is a pending TPM request.
+ * Synchronous/Blocking approach is useful for REST service implementation
+ * In this approach an application can be coded as usual using TSS.Java apis and run as a thread (TpmSyncRunnable -> TpmCommandSet)
+ * The running thread will be put to sleep whenever a TPM request is initiated.
  * The request can be retrieved from the thread, transfer to any TPM around the globe for processing.
  * To wake up the thread, the response from a TPM has to be fed to the thread.
- * This process continues until all TPM commands are executed or there is a timeout occurred
+ * This process continues until all TPM commands are executed or a timeout has occurred
  */
-public class TPMAsyncRunnableTests {
+public class TPMSyncRunnableTests {
 
     /**
      * - get random test
@@ -30,7 +30,7 @@ public class TPMAsyncRunnableTests {
             // Setup a latch
             CountDownLatch latch = new CountDownLatch(1);
 
-            TpmAsyncRunnable tpmAsyncRunnable = new TpmAsyncRunnable((tpm) -> {
+            TpmSyncRunnable tpmSyncRunnable = new TpmSyncRunnable((tpm) -> {
                 try {
                     byte[] r = tpm.GetRandom(8);
                     System.out.println("GetRandom random bytes: " + Helpers.toHex(r));
@@ -43,12 +43,12 @@ public class TPMAsyncRunnableTests {
                     latch.countDown();
                 }
             });
-            Thread tpmAsyncThread = new Thread(tpmAsyncRunnable);
-            tpmAsyncThread.start();
+            Thread tpmSyncThread = new Thread(tpmSyncRunnable);
+            tpmSyncThread.start();
 
             /* get TPM request */
-            while(!tpmAsyncRunnable.txReady());
-            byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
+            while(!tpmSyncRunnable.txReady());
+            byte[] txBuffer = tpmSyncRunnable.getTxBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
 
             /* feed the request to Windows' TPM to obtain the response */
@@ -60,7 +60,7 @@ public class TPMAsyncRunnableTests {
             System.out.println("GetRandom Rx command byte stream: " + Helpers.arrayToString(rxBuffer));
 
             /* process the response */
-            tpmAsyncRunnable.rxReady(rxBuffer);
+            tpmSyncRunnable.rxReady(rxBuffer);
 
             // wait for child thread do not terminate prematurely
             latch.await();
@@ -83,7 +83,7 @@ public class TPMAsyncRunnableTests {
             int threadTimeoutMs = 5000;
             AtomicReference<Exception> savedException = new AtomicReference<>();
 
-            TpmAsyncRunnable tpmAsyncRunnable = new TpmAsyncRunnable((tpm) -> {
+            TpmSyncRunnable tpmSyncRunnable = new TpmSyncRunnable((tpm) -> {
                 try {
                     byte[] r = tpm.GetRandom(8);
                     System.out.println("GetRandom random bytes: " + Helpers.toHex(r));
@@ -93,12 +93,12 @@ public class TPMAsyncRunnableTests {
                     throw e;
                 }
             }, threadTimeoutMs);
-            Thread tpmAsyncThread = new Thread(tpmAsyncRunnable);
-            tpmAsyncThread.start();
+            Thread tpmSyncThread = new Thread(tpmSyncRunnable);
+            tpmSyncThread.start();
 
             /* get TPM request */
-            while(!tpmAsyncRunnable.txReady());
-            byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
+            while(!tpmSyncRunnable.txReady());
+            byte[] txBuffer = tpmSyncRunnable.getTxBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
 
             /* feed the request to Windows' TPM to obtain the response */
@@ -110,10 +110,10 @@ public class TPMAsyncRunnableTests {
             System.out.println("GetRandom Rx command byte stream: " + Helpers.arrayToString(rxBuffer));
 
             /* process the response */
-            tpmAsyncRunnable.rxReady(rxBuffer);
+            tpmSyncRunnable.rxReady(rxBuffer);
 
             // join the child thread so parent thread will not terminate prematurely
-            tpmAsyncThread.join(threadTimeoutMs);
+            tpmSyncThread.join(threadTimeoutMs);
 
             if (savedException.get() != null)
                 throw savedException.get();
@@ -137,7 +137,7 @@ public class TPMAsyncRunnableTests {
             // Setup a latch
             CountDownLatch latch = new CountDownLatch(1);
 
-            TpmAsyncRunnable tpmAsyncRunnable = new TpmAsyncRunnable((tpm) -> {
+            TpmSyncRunnable tpmSyncRunnable = new TpmSyncRunnable((tpm) -> {
                 try {
                     byte[] r = tpm.GetRandom(8);
                     System.out.println("GetRandom: " + Helpers.toHex(r));
@@ -150,16 +150,16 @@ public class TPMAsyncRunnableTests {
                     latch.countDown();
                 }
             });
-            Thread tpmAsyncThread = new Thread(tpmAsyncRunnable);
-            tpmAsyncThread.start();
+            Thread tpmSyncThread = new Thread(tpmSyncRunnable);
+            tpmSyncThread.start();
 
             /* get TPM request */
-            while(!tpmAsyncRunnable.txReady());
-            byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
+            while(!tpmSyncRunnable.txReady());
+            byte[] txBuffer = tpmSyncRunnable.getTxBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
 
             // interrupt
-            tpmAsyncRunnable.interrupt(tpmAsyncThread);
+            tpmSyncRunnable.interrupt(tpmSyncThread);
 
             // wait for child thread do not terminate prematurely
             latch.await();
@@ -186,7 +186,7 @@ public class TPMAsyncRunnableTests {
             // Setup a latch
             CountDownLatch latch = new CountDownLatch(1);
 
-            TpmAsyncRunnable tpmAsyncRunnable = new TpmAsyncRunnable((tpm) -> {
+            TpmSyncRunnable tpmSyncRunnable = new TpmSyncRunnable((tpm) -> {
                 try {
                     byte[] r = tpm.GetRandom(8);
                     System.out.println("GetRandom: " + Helpers.toHex(r));
@@ -199,12 +199,12 @@ public class TPMAsyncRunnableTests {
                     latch.countDown();
                 }
             }, 1);
-            Thread tpmAsyncThread = new Thread(tpmAsyncRunnable);
-            tpmAsyncThread.start();
+            Thread tpmSyncThread = new Thread(tpmSyncRunnable);
+            tpmSyncThread.start();
 
             /* get TPM request */
-            while(!tpmAsyncRunnable.txReady());
-            byte[] txBuffer = tpmAsyncRunnable.getTxBuffer();
+            while(!tpmSyncRunnable.txReady());
+            byte[] txBuffer = tpmSyncRunnable.getTxBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
 
             /* wait for timeout */
