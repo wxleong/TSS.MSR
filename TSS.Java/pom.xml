@@ -85,7 +85,7 @@
 	          <goal>build-classpath</goal>
 	        </goals>
 	        <configuration>
-	          <outputDirectory>${project.build.directory}</outputDirectory>
+	          <!--<outputDirectory>${project.build.directory}</outputDirectory>-->
 	          <overWriteReleases>false</overWriteReleases>
 	          <overWriteSnapshots>true</overWriteSnapshots>
 	        </configuration>
