@@ -5,6 +5,7 @@ public class TpmSyncRunnable implements Runnable {
     private static final int DEFAULT_TIMEOUT = 5000;
 
     Tpm tpm;
+    Object notifyTarget;
     TpmDeviceHook tpmDeviceHook;
     TpmCommandSet tpmCommandSet;
     int timeout; // milliseconds
@@ -15,6 +16,27 @@ public class TpmSyncRunnable implements Runnable {
         tpm._setDevice(tpmDeviceHook);
         this.tpmCommandSet = tpmCommandSet;
         this.timeout = timeout;
+        notifyTarget = this;
+    }
+
+    /**
+     * Wait for TPM command availability
+     * The calling thread stops its execution until notify()
+     * @return
+     */
+    public boolean waitForCommand(int timeout) {
+        synchronized (notifyTarget) {
+            try {
+                if (!isCommandReady())
+                    notifyTarget.wait(timeout);
+            } catch (Exception e) {
+            }
+        }
+
+        if (!isCommandReady())
+            return false; /* timeout occurred */
+
+        return true;
     }
 
     public TpmSyncRunnable(TpmCommandSet tpmCommandSet) {
@@ -30,23 +52,23 @@ public class TpmSyncRunnable implements Runnable {
         }
     }
 
-    public boolean txReady() {
+    public boolean isCommandReady() {
         return tpmDeviceHook.isCommandReady;
     }
 
-    public byte[] getTxBuffer() {
-        return tpmDeviceHook.txBuffer;
+    public byte[] getCommandBuffer() {
+        return tpmDeviceHook.cmdBuffer;
     }
 
-    public void rxReady(byte[] cmdBuf) {
-        tpmDeviceHook.setRxBuffer(cmdBuf);
+    /**
+     * Provide TPM response so the TpmCommandSet may continue to process
+     * @param cmdBuf
+     */
+    public void responseReady(byte[] cmdBuf) {
         synchronized (tpmDeviceHook) {
+            tpmDeviceHook.setResponseBuffer(cmdBuf);
             tpmDeviceHook.notify();
         }
-    }
-
-    public void interrupt(Thread thread) {
-        thread.interrupt();
     }
 
     public interface TpmCommandSet {
@@ -55,10 +77,10 @@ public class TpmSyncRunnable implements Runnable {
 
     class TpmDeviceHook extends TpmDevice {
 
-        byte[] txBuffer;
-        byte[] rxBuffer;
-        volatile boolean isCommandReady;
-        volatile boolean isResponseReady;
+        byte[] cmdBuffer;
+        byte[] rspBuffer;
+        boolean isCommandReady;
+        boolean isResponseReady;
 
         public TpmDeviceHook() {
             isCommandReady = false;
@@ -70,36 +92,56 @@ public class TpmSyncRunnable implements Runnable {
             return true;
         }
 
+        /**
+         * Reaches here when TPM command is available from
+         * processing TpmCommandSet
+         * @param cmdBuf  TPM command buffer
+         */
         @Override
         public void dispatchCommand(byte[] cmdBuf) {
-            isCommandReady = true;
-            isResponseReady = false;
 
             /**
-             * .clone() has an unknown bug where txBuffer intermittently becomes null...
+             * .clone() has an unknown bug where cmdBuffer intermittently becomes null...
              * Avoid .clone() for now.
              *
              * To reproduce this issue, swap the following code with the commented code and
              * run all the tests in TPMSyncRunnableTests concurrently, notice some
              * tests will fail.
              */
-            //txBuffer = cmdBuf.clone();
-            txBuffer = new byte[cmdBuf.length];
-            System.arraycopy(cmdBuf, 0, txBuffer, 0, cmdBuf.length);
+            //cmdBuffer = cmdBuf.clone();
+            cmdBuffer = new byte[cmdBuf.length];
+            System.arraycopy(cmdBuf, 0, cmdBuffer, 0, cmdBuf.length);
 
-            rxBuffer = null;
+            rspBuffer = null;
+            isResponseReady = false;
+
+            if (notifyTarget != null) {
+                synchronized (notifyTarget) {
+                    isCommandReady = true;
+                    notifyTarget.notify();
+                }
+            } else {
+                isCommandReady = true;
+            }
+
             synchronized (this) {
                 try {
-                    this.wait(timeout);
+                    if (!isResponseReady)
+                        this.wait(timeout);
                 } catch (InterruptedException e) {
                     /* use interrupt to wake up the thread */
+                } catch (Exception e) {
+                    throw new TpmException(e.getMessage());
                 }
             }
+
+            if (!isResponseReady)
+                throw new TpmException("timeout occurred, waited for TPM response.");
         }
 
         @Override
         public byte[] getResponse() {
-            return rxBuffer;
+            return rspBuffer;
         }
 
         @Override
@@ -112,10 +154,10 @@ public class TpmSyncRunnable implements Runnable {
 
         }
 
-        public void setRxBuffer(byte[] respBuf) {
-            //rxBuffer = respBuf.clone(); // bug, check above
-            rxBuffer = new byte[respBuf.length];
-            System.arraycopy(respBuf, 0, rxBuffer, 0, respBuf.length);
+        public void setResponseBuffer(byte[] respBuf) {
+            //rspBuffer = respBuf.clone(); // bug, check above
+            rspBuffer = new byte[respBuf.length];
+            System.arraycopy(respBuf, 0, rspBuffer, 0, respBuf.length);
             isResponseReady = true;
             isCommandReady = false;
         }
