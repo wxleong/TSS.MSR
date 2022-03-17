@@ -5,10 +5,11 @@ public class TpmSyncRunnable implements Runnable {
     private static final int DEFAULT_TIMEOUT = 5000;
 
     Tpm tpm;
-    Object notifyCommandReady;
+    Object notifyEndingOrCommandReady;
     Object notifyResponseReady;
     Object notifyEnding;
     volatile boolean isEnded;
+    volatile boolean noError;
     TpmDeviceHook tpmDeviceHook;
     TpmCommandSet tpmCommandSet;
     int timeout; // milliseconds
@@ -20,26 +21,29 @@ public class TpmSyncRunnable implements Runnable {
         this.tpmCommandSet = tpmCommandSet;
         this.timeout = timeout;
 
-        notifyCommandReady = new Object();
+        notifyEndingOrCommandReady = new Object();
         notifyResponseReady = new Object();
         notifyEnding = new Object();
         isEnded = false;
+        noError = true;
     }
 
     /**
-     * Wait for TPM command availability
+     * Wait for TPM command availability or completion
      * The calling thread stops its execution until notify()
-     * @return
+     * @return true if command is ready or execution has completed
+     *         false if timeout has occurred
      */
-    public boolean waitForCommand(int timeout) {
-        synchronized (notifyCommandReady) {
+    public boolean waitForCommandOrEnding(int timeout) {
+        synchronized (notifyEndingOrCommandReady) {
             try {
-                if (!isCommandReady())
-                    notifyCommandReady.wait(timeout);
+                if (!isCommandReady() && !isEnded)
+                    notifyEndingOrCommandReady.wait(timeout);
             } catch (Exception e) {
             }
         }
-        if (!isCommandReady())
+
+        if (!isCommandReady() && !isEnded)
             return false; /* timeout occurred */
 
         return true;
@@ -63,16 +67,26 @@ public class TpmSyncRunnable implements Runnable {
         return isEnded;
     }
 
+    /**
+     * This flag is meaningful only if isEnded is set
+     * @return
+     */
+    public boolean isEndedOk() { return noError; }
+
     @Override
     public void run() {
         try {
             tpmCommandSet.run(tpm);
         } catch (Exception e) {
+            noError = false;
             throw e;
         } finally {
             synchronized (notifyEnding) {
-                isEnded = true;
-                notifyEnding.notify();
+                synchronized (notifyEndingOrCommandReady) {
+                    isEnded = true;
+                    notifyEnding.notify();
+                    notifyEndingOrCommandReady.notify();
+                }
             }
         }
     }
@@ -146,10 +160,10 @@ public class TpmSyncRunnable implements Runnable {
             rspBuffer = null;
             isResponseReady = false;
 
-            if (notifyCommandReady != null) {
-                synchronized (notifyCommandReady) {
+            if (notifyEndingOrCommandReady != null) {
+                synchronized (notifyEndingOrCommandReady) {
                     isCommandReady = true;
-                    notifyCommandReady.notify();
+                    notifyEndingOrCommandReady.notify();
                 }
             } else {
                 isCommandReady = true;

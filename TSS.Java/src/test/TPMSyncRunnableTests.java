@@ -48,7 +48,7 @@ public class TPMSyncRunnableTests {
             tpmSyncThread.start();
 
             /* get TPM command */
-            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommandOrEnding(5000));
             Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
@@ -102,7 +102,7 @@ public class TPMSyncRunnableTests {
             tpmSyncThread.start();
 
             /* get TPM command */
-            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommandOrEnding(5000));
             Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
@@ -160,7 +160,7 @@ public class TPMSyncRunnableTests {
             tpmSyncThread.start();
 
             /* get TPM command */
-            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommandOrEnding(5000));
             Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
@@ -211,7 +211,7 @@ public class TPMSyncRunnableTests {
             tpmSyncThread.start();
 
             /* get TPM command */
-            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommandOrEnding(5000));
             Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
@@ -267,7 +267,7 @@ public class TPMSyncRunnableTests {
             tpmSyncThread.start();
 
             /* get TPM command, expecting timeout */
-            Assertions.assertFalse(tpmSyncRunnable.waitForCommand(1));
+            Assertions.assertFalse(tpmSyncRunnable.waitForCommandOrEnding(1));
             Assertions.assertFalse(tpmSyncRunnable.isEnded());
 
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
@@ -277,7 +277,7 @@ public class TPMSyncRunnableTests {
             delay.countDown();
 
             /* re-try get TPM command */
-            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommandOrEnding(5000));
             Assertions.assertFalse(tpmSyncRunnable.isEnded());
 
             txBuffer = tpmSyncRunnable.getCommandBuffer();
