@@ -1,10 +1,12 @@
 package test;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import samples.CmdLine;
 
 public class TSSMainTests {
+    @Disabled("Need administrator access and behavior varies across different TPM")
     @Test
     public void main() {
         try {

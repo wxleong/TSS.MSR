@@ -1,6 +1,7 @@
 package test;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import tss.*;
 
@@ -48,6 +49,7 @@ public class TPMTunnelTests {
      * https://www.baeldung.com/java-ssl-handshake-failures
      * https://community.oracle.com/tech/developers/discussion/1533716/how-to-use-self-signed-certificate-with-sslserversocket
      */
+    @Disabled("TLS will fail without Keystore implementation")
     @Test
     public void secureTPMTbsTunnel() {
         try {
