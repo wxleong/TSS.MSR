@@ -5,7 +5,10 @@ public class TpmSyncRunnable implements Runnable {
     private static final int DEFAULT_TIMEOUT = 5000;
 
     Tpm tpm;
-    Object notifyTarget;
+    Object notifyCommandReady;
+    Object notifyResponseReady;
+    Object notifyEnding;
+    volatile boolean isEnded;
     TpmDeviceHook tpmDeviceHook;
     TpmCommandSet tpmCommandSet;
     int timeout; // milliseconds
@@ -16,7 +19,11 @@ public class TpmSyncRunnable implements Runnable {
         tpm._setDevice(tpmDeviceHook);
         this.tpmCommandSet = tpmCommandSet;
         this.timeout = timeout;
-        notifyTarget = this;
+
+        notifyCommandReady = new Object();
+        notifyResponseReady = new Object();
+        notifyEnding = new Object();
+        isEnded = false;
     }
 
     /**
@@ -25,22 +32,35 @@ public class TpmSyncRunnable implements Runnable {
      * @return
      */
     public boolean waitForCommand(int timeout) {
-        synchronized (notifyTarget) {
+        synchronized (notifyCommandReady) {
             try {
                 if (!isCommandReady())
-                    notifyTarget.wait(timeout);
+                    notifyCommandReady.wait(timeout);
             } catch (Exception e) {
             }
         }
-
         if (!isCommandReady())
             return false; /* timeout occurred */
 
         return true;
     }
 
-    public TpmSyncRunnable(TpmCommandSet tpmCommandSet) {
-        this(tpmCommandSet, DEFAULT_TIMEOUT);
+    public boolean waitForEnding(int timeout) {
+        synchronized (notifyEnding) {
+            try {
+                if (!isEnded)
+                    notifyEnding.wait(timeout);
+            } catch (Exception e) {
+            }
+        }
+        if (!isEnded)
+            return false; /* timeout occurred */
+
+        return true;
+    }
+
+    public boolean isEnded() {
+        return isEnded;
     }
 
     @Override
@@ -49,6 +69,11 @@ public class TpmSyncRunnable implements Runnable {
             tpmCommandSet.run(tpm);
         } catch (Exception e) {
             throw e;
+        } finally {
+            synchronized (notifyEnding) {
+                isEnded = true;
+                notifyEnding.notify();
+            }
         }
     }
 
@@ -62,12 +87,18 @@ public class TpmSyncRunnable implements Runnable {
 
     /**
      * Provide TPM response so the TpmCommandSet may continue to process
-     * @param cmdBuf
+     * @param respBuf
      */
-    public void responseReady(byte[] cmdBuf) {
-        synchronized (tpmDeviceHook) {
-            tpmDeviceHook.setResponseBuffer(cmdBuf);
-            tpmDeviceHook.notify();
+    public void responseReady(byte[] respBuf) {
+        synchronized (notifyResponseReady) {
+            tpmDeviceHook.setResponseBuffer(respBuf);
+            notifyResponseReady.notify();
+        }
+    }
+
+    public void interrupt() {
+        synchronized (notifyResponseReady) {
+            notifyResponseReady.notify();
         }
     }
 
@@ -79,8 +110,8 @@ public class TpmSyncRunnable implements Runnable {
 
         byte[] cmdBuffer;
         byte[] rspBuffer;
-        boolean isCommandReady;
-        boolean isResponseReady;
+        volatile boolean isCommandReady;
+        volatile boolean isResponseReady;
 
         public TpmDeviceHook() {
             isCommandReady = false;
@@ -115,19 +146,19 @@ public class TpmSyncRunnable implements Runnable {
             rspBuffer = null;
             isResponseReady = false;
 
-            if (notifyTarget != null) {
-                synchronized (notifyTarget) {
+            if (notifyCommandReady != null) {
+                synchronized (notifyCommandReady) {
                     isCommandReady = true;
-                    notifyTarget.notify();
+                    notifyCommandReady.notify();
                 }
             } else {
                 isCommandReady = true;
             }
 
-            synchronized (this) {
+            synchronized (notifyResponseReady) {
                 try {
                     if (!isResponseReady)
-                        this.wait(timeout);
+                        notifyResponseReady.wait(timeout);
                 } catch (InterruptedException e) {
                     /* use interrupt to wake up the thread */
                 } catch (Exception e) {

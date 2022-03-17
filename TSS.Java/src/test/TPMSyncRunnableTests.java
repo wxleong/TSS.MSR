@@ -43,12 +43,13 @@ public class TPMSyncRunnableTests {
                     // release the latch
                     latch.countDown();
                 }
-            });
+            }, 5000);
             Thread tpmSyncThread = new Thread(tpmSyncRunnable);
             tpmSyncThread.start();
 
             /* get TPM command */
-            tpmSyncRunnable.waitForCommand(5000);
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
 
@@ -62,6 +63,10 @@ public class TPMSyncRunnableTests {
 
             /* process the response */
             tpmSyncRunnable.responseReady(rxBuffer);
+
+            /* wait for completion */
+            Assertions.assertTrue(tpmSyncRunnable.waitForEnding(5000));
+            Assertions.assertTrue(tpmSyncRunnable.isEnded());
 
             // wait for child thread do not terminate prematurely
             latch.await();
@@ -97,7 +102,8 @@ public class TPMSyncRunnableTests {
             tpmSyncThread.start();
 
             /* get TPM command */
-            tpmSyncRunnable.waitForCommand(5000);
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom Tx command byte stream: " + Helpers.arrayToString(txBuffer));
 
@@ -111,6 +117,10 @@ public class TPMSyncRunnableTests {
 
             /* process the response */
             tpmSyncRunnable.responseReady(rxBuffer);
+
+            /* wait for completion */
+            Assertions.assertTrue(tpmSyncRunnable.waitForEnding(5000));
+            Assertions.assertTrue(tpmSyncRunnable.isEnded());
 
             // join the child thread so parent thread will not terminate prematurely
             tpmSyncThread.join(threadTimeoutMs);
@@ -145,17 +155,22 @@ public class TPMSyncRunnableTests {
                     // release the latch
                     latch.countDown();
                 }
-            });
+            }, 5000);
             Thread tpmSyncThread = new Thread(tpmSyncRunnable);
             tpmSyncThread.start();
 
             /* get TPM command */
-            tpmSyncRunnable.waitForCommand(5000);
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
 
             // interrupt
             tpmSyncThread.interrupt();
+
+            /* wait for completion */
+            Assertions.assertTrue(tpmSyncRunnable.waitForEnding(5000));
+            Assertions.assertTrue(tpmSyncRunnable.isEnded());
 
             // wait for child thread do not terminate prematurely
             latch.await();
@@ -169,7 +184,7 @@ public class TPMSyncRunnableTests {
     }
 
     /**
-     * Thread timeout test, set timeout to 1ms
+     * test TPM response timeout
      */
     @Test
     public void testResponseTimeout() {
@@ -191,16 +206,21 @@ public class TPMSyncRunnableTests {
                     // release the latch
                     latch.countDown();
                 }
-            }, 1);
+            }, 1000);
             Thread tpmSyncThread = new Thread(tpmSyncRunnable);
             tpmSyncThread.start();
 
             /* get TPM command */
-            tpmSyncRunnable.waitForCommand(5000);
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertFalse(tpmSyncRunnable.isEnded());
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             System.out.println("GetRandom TX command byte stream: " + Helpers.arrayToString(txBuffer));
 
-            /* wait for timeout */
+            /* wait for timeout due to no response received */
+
+            /* wait for completion, this is trigger by exception */
+            Assertions.assertTrue(tpmSyncRunnable.waitForEnding(5000));
+            Assertions.assertTrue(tpmSyncRunnable.isEnded());
 
             // wait for child thread do not terminate prematurely
             latch.await();
@@ -242,13 +262,13 @@ public class TPMSyncRunnableTests {
                     // release the latch
                     latch.countDown();
                 }
-            }, 1);
+            }, 5000);
             Thread tpmSyncThread = new Thread(tpmSyncRunnable);
             tpmSyncThread.start();
 
             /* get TPM command, expecting timeout */
-            boolean isOk = tpmSyncRunnable.waitForCommand(1);
-            Assertions.assertFalse(isOk);
+            Assertions.assertFalse(tpmSyncRunnable.waitForCommand(1));
+            Assertions.assertFalse(tpmSyncRunnable.isEnded());
 
             byte[] txBuffer = tpmSyncRunnable.getCommandBuffer();
             Assertions.assertNull(txBuffer);
@@ -257,17 +277,31 @@ public class TPMSyncRunnableTests {
             delay.countDown();
 
             /* re-try get TPM command */
-            isOk = tpmSyncRunnable.waitForCommand(5000);
-            Assertions.assertTrue(isOk);
+            Assertions.assertTrue(tpmSyncRunnable.waitForCommand(5000));
+            Assertions.assertFalse(tpmSyncRunnable.isEnded());
 
             txBuffer = tpmSyncRunnable.getCommandBuffer();
             Assertions.assertNotNull(txBuffer);
 
+            /* feed the command to Windows' TPM to obtain the response */
+            TpmDeviceTbs tpmDeviceTbs = new TpmDeviceTbs();
+            tpmDeviceTbs.connect();
+            tpmDeviceTbs.dispatchCommand(txBuffer);
+            while(!tpmDeviceTbs.responseReady());
+            byte[] rxBuffer = tpmDeviceTbs.getResponse();
+            System.out.println("GetRandom Rx command byte stream: " + Helpers.arrayToString(rxBuffer));
+
+            /* process the response */
+            tpmSyncRunnable.responseReady(rxBuffer);
+
+            /* wait for completion */
+            Assertions.assertTrue(tpmSyncRunnable.waitForEnding(5000));
+            Assertions.assertTrue(tpmSyncRunnable.isEnded());
+
             // wait for child thread do not terminate prematurely
             latch.await();
 
-            Assertions.assertNotNull(savedException.get());
-            Assertions.assertEquals(savedException.get().getMessage(), "timeout occurred, waited for TPM response.");
+            Assertions.assertNull(savedException.get());
         } catch (Exception e) {
             e.printStackTrace();
             Assertions.assertTrue(false);
