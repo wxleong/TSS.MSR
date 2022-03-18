@@ -79,7 +79,7 @@ public class TpmSyncRunnable implements Runnable {
             tpmCommandSet.run(tpm);
         } catch (Exception e) {
             noError = false;
-            throw e;
+            //throw e;
         } finally {
             synchronized (notifyEnding) {
                 synchronized (notifyEndingOrCommandReady) {
